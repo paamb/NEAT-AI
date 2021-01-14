@@ -1,19 +1,21 @@
 import random as random
 import copy
+from main import glb_node_index, glb_innov
 class Genome:
     # Connection genes connects two node genes
     # Node provide list of input, hidden_nodes and output nodes
-    def __init__(self,input_nodes, hidden_nodes, output_nodes,innov_counter,reward):
+    def __init__(self,input_nodes, hidden_nodes, output_nodes,reward):
         self.input_nodes = input_nodes
         self.hidden_nodes = hidden_nodes
         self.output_nodes = output_nodes
-        self.innov_counter = innov_counter
         self.reward = reward
 
     def feed_forward(self,input_values):
         for i in range(len(self.input_nodes)):
+            # print(len(self.input_nodes))
             self.input_nodes[i].value = input_values[i]
         return [n.feed_output() for n in self.output_nodes]
+
 
     def best_move(self):
         #Sorts the outputnodes and chooses the highest value outputnode
@@ -31,13 +33,12 @@ class Genome:
                 ordered_node_list = bfs(self.output_nodes, [])
                 rnd_output_node_index = random.randint(len(self.output_nodes),len(ordered_node_list))
                 rnd_output_node = ordered_node_list[rnd_output_node_index]
-                rnd_input_node_index = random.randint(rnd_output_node_index, len(ordered_node_list)- len(self.input_nodes))
+                # rnd_input_node_index = random.randint(rnd_output_node_index, len(ordered_node_list)- len(self.input_nodes))
                 rnd_input_node = ordered_node_list[rnd_output_node_index]
             
                 if rnd_input_node not in rnd_output_node.children:
                     rnd_output_node.children.append(rnd_input_node)
-                    rnd_output_node.edges.append(Edge(random.uniform(0,1),self.innov_counter+1))
-                    self.innov_counter += 1
+                    rnd_output_node.edges.append(Edge(random.uniform(0,1),innov_maker(glb_innov,rnd_input_node, rnd_output_node), False))
                     break
         return None
 
@@ -45,22 +46,26 @@ class Genome:
         #Doesnt dissable child
         possible_output_nodes = self.hidden_nodes + self.output_nodes
         rnd_output_node = possible_output_nodes[random.randrange(0,len(possible_output_nodes))]
-        rnd_index = random.randint(0,len(rnd_output_node.children))
+        rnd_index = random.randrange(0,len(rnd_output_node.children))
         rnd_child = rnd_output_node.children[rnd_index]
-        new_node = Node(False, None, None, rnd_child, Edge(1,self.innov_counter+1, False))
-        rnd_output_node.children.append(new_node)
-        self.innov_counter += 1
+        #Is_input_node, Index, value, children, edges, move
+        new_node = Node(False, innov_maker(glb_node_index,rnd_child, rnd_output_node), None, [rnd_child], [Edge(0.5,innov_maker(glb_innov,rnd_child,rnd_output_node),False)])
+        # print(new_node.children)
         #Same weight as old connection
         old_connection = rnd_output_node.edges[rnd_index]
-        #Dissable old connection
         new_connection = copy.deepcopy(old_connection)
+        self.hidden_nodes.append(new_node)
+        rnd_output_node.children.pop(rnd_index)
+        rnd_output_node.children.append(new_node)
+
+        #Dissable old connection
+
         #Dissable old connection
         old_connection.dissabled = True
         rnd_output_node.edges.append(new_connection)
-        new_connection.innov = self.innov_counter + 1
-        self.innov_counter += 1
-        print(rnd_output_node.children)
-        print(rnd_output_node.edges[3].dissabled)
+        new_connection.innov = innov_maker(glb_node_index, new_node, rnd_output_node)
+        # print(rnd_output_node.children)
+        # print(rnd_output_node.edges[3].dissabled)
         # input("x")
 
 
@@ -84,11 +89,25 @@ class Node:
         if self.is_input_node:
             return self.value
         out_sum = 0
+        # print(self.children)
         for x in range(len(self.children)):
             child = self.children[x]
+            # print(self.children)
+            # print(self.edges[x], "edge")
+            # print(self.is_input_node)
             out_sum += child.feed_output()*self.edges[x].weight
         self.value = out_sum
         return out_sum
+#global innov
+def innov_maker(glb_innov, input_node, output_node):
+    key = str(input_node.index) + "_" + str(output_node.index)
+    if key not in glb_innov.keys():
+        value = len(glb_innov)
+        glb_innov[key] = value
+    else:
+        value = glb_innov[key]
+    return value
+
 
 def bfs(nodes, queue):
     nodes_on_layer = []
@@ -102,3 +121,10 @@ def bfs(nodes, queue):
         children = False
     else:
         return queue  
+
+def print_agent(agent):
+    print(agent.input_nodes)
+    print(agent.hidden_nodes)
+    print(agent.output_nodes)
+    print("---------------------------------")
+#Kan være at man bare trenger fra noden til output noden som du tenkte på
