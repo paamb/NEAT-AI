@@ -1,6 +1,6 @@
 import gym
 import random
-from config import *
+from config import num_agents
 from cartpole import *
 from NEAT import *
 # from init_genomes import *
@@ -13,7 +13,8 @@ def init_nodes(num_input,num_output):
     hidden_nodes = []
     #Output node gets every input node as children
     output_nodes = [Node(False, i, None, input_nodes, None) for i in range(num_input, num_input+num_output)]
-    #Setting available moves to the output_nodes
+    #Setting available moves 
+    # to the output_nodes
     for i in range(len(output_nodes)):
         output_nodes[i].move = moves[i]
     init_edges(input_nodes, output_nodes)
@@ -31,6 +32,11 @@ def init_edges(input_node, output_node):
             weight = random.uniform(0,1)
             parent.edges.append(Edge(weight, innov,True))
     return None
+
+def init_species(agents):
+    represent_genome = random.choice(agents)
+    species = [Specie(represent_genome, [])]
+    return species
 
 def init_genomes(num_agents, num_input, num_output):
     all_agents = []
@@ -53,15 +59,22 @@ def test_generation(agents):
                 break
         print_agent(agent)
     env_ver.close()
+
 def mutatenpair(agents):
     for agent in agents:
         # agent.add_connection()
         agent.add_node()
+
 def main():
     agents = init_genomes(num_agents, num_input, num_output)
+    #One species represented by one random genome
+    species = init_species(agents)
     while True:
         test_generation(agents)
-        mutatenpair(agents)
+        # mutatenpair(agents)
+        # species = make_species(species)
+        genomic_distance(agents[0], agents[1])
+        input("> ")
 
 
 if __name__ == "__main__":
