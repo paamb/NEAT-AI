@@ -72,7 +72,7 @@ def main():
     while True:
         test_generation(agents)
         # mutatenpair(agents)
-        # species = make_species(species)
+        species = make_species(species)
         genomic_distance(agents[0], agents[1])
         input("> ")
 

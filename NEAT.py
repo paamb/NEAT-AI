@@ -168,6 +168,7 @@ def distance_function(N, E, D, W, c1, c2, c3):
     return distance
 
 def make_species():
+    
     return None
 def genomic_distance(a,b):
     matching, disjoint, excess, avg_weight_difference = compare_edges(a,b)

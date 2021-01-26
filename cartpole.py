@@ -10,6 +10,6 @@ def init_run():
 
 def main_cartpole(move):
     if move != "end":
-        env_ver.render()
+        # env_ver.render()
         observation, reward, done, info = env_ver.step(move)
         return observation,reward,done
