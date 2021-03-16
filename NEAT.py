@@ -1,12 +1,13 @@
 import random as random
 import copy
 from main import glb_innov, glb_node_index
-from config import c1, c2, c3
+from config import c1, c2, c3, valid_distance, num_agents, add_node_probability, add_connection_probablity, mutate_connection_probablity, random_value, weight_mutate, uniformly_perturbed, interspecies_mating, crossover_prob
 import numpy as np
 class Specie:
-    def __init__(self, represented, genomes):
-        self.represent = None
-        self.genomes = []
+    def __init__(self, represented):
+        self.represent = represented
+        self.genomes = [represented]
+    
 class Genome:
     # Connection genes connects two node genes
     # Node provide list of input, hidden_nodes and output nodes
@@ -14,15 +15,25 @@ class Genome:
         self.input_nodes = input_nodes
         self.hidden_nodes = hidden_nodes
         self.output_nodes = output_nodes
+        self.specie = None
         #Keeps track of edges in the genome
         self.reward = reward
+
+    def __eq__(self, copy):
+        return self.__dict__ == copy.__dict__
+
+    def delete_from_specie(self):
+        if (self.specie == None):
+            return None
+        self.specie.genomes.remove(self)
+        self.specie = None
 
     def feed_forward(self,input_values):
         for i in range(len(self.input_nodes)):
             # print(len(self.input_nodes))
             self.input_nodes[i].value = input_values[i]
         return [n.feed_output() for n in self.output_nodes]
-
+        
     def best_move(self):
         #Sorts the outputnodes and chooses the highest value outputnode
         sorted_moves = sorted(self.output_nodes, key=lambda x:x.value, reverse = True)
@@ -30,7 +41,7 @@ class Genome:
 
     def add_connection(self):
         all_nodes_connected = True
-        for i in range(self.output_nodes):
+        for i in range(len(self.output_nodes)):
             if self.output_nodes[i].children != self.input_nodes + self.hidden_nodes:
                 all_nodes_connected = False
                 break
@@ -46,6 +57,8 @@ class Genome:
                     rnd_output_node.children.append(rnd_input_node)
                     rnd_output_node.edges.append(Edge(random.uniform(0,1),innov_maker(glb_innov,rnd_input_node, rnd_output_node), False))
                     break
+
+        # self.delete_from_specie()
         return None
 
     def add_node(self):
@@ -69,6 +82,24 @@ class Genome:
         rnd_output_node.edges.append(new_connection)
         #Giving the new connection an innovation number
         new_connection.innov = innov_maker(glb_node_index, new_node, rnd_output_node)
+
+        # append_agent_to_agents(self)
+        # self.delete_from_specie()
+    
+    def mutate_connection(self):
+        uniformly_perturb = random.randint(0,int(1/uniformly_perturbed))
+        edges = get_edges_in_genome(self)
+        if uniformly_perturb:
+            for edge in edges:
+                edge.weight += random.uniform(-0.1, 0.1)
+        else:
+            for edge in edges:
+                edge.weight = random.uniform(-1,1)
+        # self.delete_from_specie()
+
+
+
+
 
 class Edge:
     def __init__(self, weight, innov,dissabled):
@@ -96,6 +127,26 @@ class Node:
         self.value = out_sum
         return out_sum
 
+
+
+def mutatenpair(agents):
+    new_agents = []
+    for agent in agents:
+        copy_of_agent = copy.deepcopy(agent)
+        if random.randint(0,int(1/add_node_probability)) == 0: copy_of_agent.add_node()
+        # if random.randint(0,int(1/add_connection_probablity)) == 0: agent.add_connection()
+        if random.randint(0,int(1/mutate_connection_probablity)) == 0: copy_of_agent.mutate_connection()
+        if random.randint(0,int(1/crossover_prob)) == 0:
+            mating_agent = random.choice(agents)
+            copy_of_agent = crossover(agent, mating_agent)
+        # copy_of_agent.specie = None
+        # agents.append(agent)
+        new_agents.append(copy_of_agent)
+        new_agents.append(agent)
+    agents_sorted_by_reward = sorted(new_agents, key = lambda agent:agent.reward, reverse=True)
+    
+    return agents_sorted_by_reward
+
 #global innov
 def innov_maker(glb_innov, input_node, output_node):
     key = str(input_node.index) + "_" + str(output_node.index)
@@ -122,11 +173,19 @@ def bfs(nodes, queue):
 def get_nodes_in_genome(a):
     return  a.hidden_nodes + a.output_nodes
 
+def get_edges_in_genome(genome):
+    nodes = genome.hidden_nodes + genome.output_nodes
+    return set([edge for node in nodes for edge in node.edges])
+
 def get_innovs_in_genome(nodes):
     return set([edge.innov for node in nodes for edge in node.edges])
 
 def get_weights_innov_dict(nodes):
     return {edge.innov: edge.weight for node in nodes for edge in node.edges}
+
+def get_edge_innov_dict(genome):
+    nodes = genome.hidden_nodes + genome.output_nodes
+    return {edge.innov: edge for node in nodes for edge in node.edges}
 # def compare_edges2(a,b):
 #     a_edges = get_weights_innov(a)
 #     b_edges = get_weights_innov(b)
@@ -161,19 +220,92 @@ def compare_edges(a, b):
        sum_weight_difference += abs(a_edge_dict[element] - b_edge_dict[element])
     avg_weight_difference = sum_weight_difference/(len(matching))
  
-    return len(matching), len(disjoint), len(excess), avg_weight_difference
+    return len(matching), len(excess), len(disjoint), avg_weight_difference
 
-def distance_function(N, E, D, W, c1, c2, c3):
+def distance_function(E, D, W, N):
     distance = c1*E/N + c2*D/N + c3*W
-    return distance
+    return valid_distance > distance
 
-def make_species():
-    
-    return None
+def accepted_by_specie(agent,specie):
+    matching, excess, disjoint, avg_weigth_difference = compare_edges(agent, specie.represent)
+    total = matching + excess + disjoint
+    return distance_function(excess, disjoint, avg_weigth_difference, total)
+
+def make_species(agents,species):
+    for agent in agents:
+        accepted = False
+        for specie in species:
+            if agent.specie is not None:
+                break
+            if accepted_by_specie(agent, specie):
+                specie.genomes.append(agent)
+                accepted = True
+                agent.specie = specie
+                break
+            # If its not accepted, we make a new specie of the agent
+            if not accepted:
+                specie = Specie(agent)
+                species.append(specie)
+                agent.specie = specie
+    return species
+
+def set_agents_specie_less(agents):
+    for agent in agents:
+        agent.specie = None
+def crossover(agent1,agent2):
+    best_agent = max([agent1,agent2], key = lambda x:x.reward)
+    worst_agent = min([agent1,agent2], key = lambda x:x.reward)
+    offspring = copy.deepcopy(best_agent)
+    offspring_edges = get_edge_innov_dict(offspring)
+    worst_agent_edges = get_edge_innov_dict(worst_agent)
+
+    for (innov,edge) in offspring_edges.items():
+        if innov in worst_agent_edges.keys():
+            edge.weight = random.choice([offspring_edges[innov], worst_agent_edges[innov]]).weight
+    return offspring
+
+def calculate_reduced_reward(agent,length):
+    return agent.reward/length
+
+def give_reduced_reward_regarding_lenght_of_specie(species):
+    for specie in species:
+        length_of_specie = len(specie.genomes)
+        for agent in specie.genomes:
+            agent.reward = calculate_reduced_reward(agent, length_of_specie)
+
+def set_reperesened_agent_best_specie(species):
+    for specie in species:
+        specie_sorted_by_reward = sorted(specie.genomes, key = lambda agent:agent.reward, reverse=True)
+        specie.represent = specie_sorted_by_reward[0]
+
+def reduce_agents(agents,species):
+    agents_sorted_by_reward = sorted(agents, key = lambda agent:agent.reward, reverse=True)
+    best_agents_after_reduces_reward = agents_sorted_by_reward[:num_agents]
+    # deleted_agents = agents_sorted_by_reward[-num_agents:]
+    # print(len(deleted_agents))
+    for specie in species:
+        new_specie_genomes = []
+        new_specie_representative_is_set = False
+        for agent in best_agents_after_reduces_reward:
+            if agent in specie.genomes:
+                if (not new_specie_representative_is_set):
+                    specie.represent = agent
+                new_specie_genomes.append(agent)
+                new_specie_representative_is_set = True
+        specie.genomes = new_specie_genomes
+    return best_agents_after_reduces_reward
+
+def delete_empty_species(species):
+    new_specie_list = []
+    for specie in species:
+        if specie.genomes:
+            new_specie_list.append(specie)
+    return new_specie_list
+
 def genomic_distance(a,b):
     matching, disjoint, excess, avg_weight_difference = compare_edges(a,b)
     total = matching + disjoint + excess
-    distance = distance_function(total, excess, disjoint, avg_weight_difference, c1, c2, c3)
+    distance = distance_function(excess, disjoint, avg_weight_difference,total)
 
     print("Disjoint ",disjoint)
     print("Matching ", matching)
