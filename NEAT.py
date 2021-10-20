@@ -1,8 +1,13 @@
 import random as random
 import copy
-from init_genomes import glb_innov, glb_node_index
 from config import c1, c2, c3, valid_distance, num_agents, add_node_probability, add_connection_probablity, mutate_connection_probablity, random_value, weight_mutate, uniformly_perturbed, interspecies_mating, crossover_prob
 import numpy as np
+
+#Global innovation number
+glb_innov = {}
+glb_node_index = {}
+
+
 class Specie:
     def __init__(self, represented):
         self.represent = represented

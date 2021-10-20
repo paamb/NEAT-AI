@@ -8,33 +8,28 @@ done = True
 for step in range(5000):
     if done:
         state = env.reset()
-    state, reward, done, info = env.step(6)
+    state, reward, done, info = env.step(0)
     env.render()
-
+    print(state)
 env.close()
 
-MOVEMENT = [
-    ['NOOP'],
-    ['A'],
-    ['B'],
-    ['right'],
-    ['right', 'A'],
-    ['right', 'B'],
-    ['left'],
-    ['left', 'A'],
-    ['left', 'B'],
-    ['down'],
-    ['down', 'A'],
-    ['down', 'B'],
-]
 
+import gym
+# from main import render
+num_input = 4
+num_output = 2
+moves = [0,1]
+env_ver = gym.make('CartPole-v0')
+is_render = False
+def init_run():
+    observation = env_ver.reset()
+    return observation
 
-SIMPLE_MOVEMENT = [
-    ['NOOP'],
-    ['A'],
-    ['B'],
-    ['right'],
-    ['left'],
-    ['down'],
-]
+def main_cartpole(move,render):
+    if move != "end":
+        if render:
+            env_ver.render()
+        observation, reward, done, info = env_ver.step(move)
+        return observation,reward,done
+
 
