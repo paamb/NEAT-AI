@@ -5,3 +5,7 @@ An artificial intelligence based on the NEAT algorithm. It uses the natural laws
 To run the program simply run the main.py file.
 
 Bear in mind this project is not finished yet, but it works, just not optimally.
+
+|                        Agent playing flappybird                        |
+| :--------------------------------------------------------------: |  
+|![Gif not shown](gif/flappybird_animation.gif)|
